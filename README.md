@@ -89,20 +89,19 @@ entrar como administrador.
 
 ## Despliegue en Vercel
 
-1. Sube el repositorio a GitHub/GitLab y crea un proyecto nuevo en
-   [Vercel](https://vercel.com) apuntando a él.
-2. Crea una base de datos PostgreSQL (Vercel Postgres, Neon, Supabase…) y
-   configura en Vercel las variables de entorno `DATABASE_URL`,
-   `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` y
-   `NEXT_PUBLIC_SITE_NAME`.
-3. Antes del primer despliegue (o tras clonar en local con la
-   `DATABASE_URL` de producción), ejecuta:
-   ```bash
-   npx prisma migrate deploy
-   npm run seed
-   ```
-4. Despliega. El build ejecuta `prisma generate && next build`
-   automáticamente.
+1. Crea un proyecto nuevo en [Vercel](https://vercel.com/new) apuntando a
+   este repositorio de GitHub.
+2. Añade una base de datos Postgres desde la pestaña **Storage** del
+   proyecto (integración de Neon o Vercel Postgres) — esto configura
+   `DATABASE_URL` automáticamente.
+3. En **Settings → Environment Variables**, añade además:
+   `SESSION_SECRET` (genera uno con `openssl rand -base64 32`),
+   `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` y `NEXT_PUBLIC_SITE_NAME`.
+4. Despliega. El build ejecuta automáticamente `prisma generate`,
+   `prisma migrate deploy` (crea las tablas) y el script de seed (crea/
+   actualiza el usuario admin) antes de compilar — no hace falta ningún
+   paso manual. Puedes volver a desplegar sin problema: tanto las
+   migraciones como el seed son seguros de repetir.
 5. (Opcional) El proyecto incluye `vercel.json` con una tarea programada
    (Vercel Cron) que cada 15 minutos libera las reservas caducadas, para
    que los números vuelvan a estar disponibles aunque nadie visite la
