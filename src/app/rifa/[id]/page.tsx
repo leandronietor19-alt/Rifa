@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { releaseExpiredReservations, formatCurrency } from "@/lib/raffle";
-import RaffleNumberGrid from "./RaffleNumberGrid";
+import RaffleOrderForm from "./RaffleOrderForm";
 
 export default async function RafflePage({
   params,
@@ -15,16 +15,9 @@ export default async function RafflePage({
   const raffle = await prisma.raffle.findUnique({ where: { id } });
   if (!raffle) notFound();
 
-  const numbers = await prisma.raffleNumber.findMany({
-    where: { raffleId: id },
-    select: { number: true, status: true },
-    orderBy: { number: "asc" },
+  const soldCount = await prisma.raffleNumber.count({
+    where: { raffleId: id, order: { status: "PAID" } },
   });
-
-  const soldCount = numbers.filter((n) => n.status === "SOLD").length;
-  const reservedCount = numbers.filter((n) => n.status === "RESERVED").length;
-  const total = numbers.length;
-  const progressPct = total > 0 ? Math.round((soldCount / total) * 100) : 0;
 
   const drawDateFormatted = new Intl.DateTimeFormat("es-ES", {
     dateStyle: "long",
@@ -34,7 +27,7 @@ export default async function RafflePage({
   return (
     <div className="flex-1 flex flex-col">
       <header className="bg-brand-navy text-white">
-        <div className="mx-auto max-w-5xl px-6 py-10">
+        <div className="mx-auto max-w-3xl px-6 py-10">
           <h1 className="text-2xl sm:text-3xl font-bold">{raffle.title}</h1>
           <p className="mt-2 text-white/80 max-w-2xl whitespace-pre-line">
             {raffle.description}
@@ -57,26 +50,13 @@ export default async function RafflePage({
             </div>
             <div>
               <div className="text-white/60">Vendidos</div>
-              <div className="font-semibold">
-                {soldCount} / {total} ({progressPct}%)
-              </div>
+              <div className="font-semibold">{soldCount}</div>
             </div>
-            <div>
-              <div className="text-white/60">Reservados ahora</div>
-              <div className="font-semibold">{reservedCount}</div>
-            </div>
-          </div>
-
-          <div className="mt-4 h-2 w-full rounded-full bg-white/20 overflow-hidden">
-            <div
-              className="h-full bg-brand-gold"
-              style={{ width: `${progressPct}%` }}
-            />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl w-full px-6 py-8 flex-1">
+      <main className="mx-auto max-w-3xl w-full px-6 py-10 flex-1">
         {raffle.status !== "ACTIVE" ? (
           <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
             {raffle.status === "CLOSED"
@@ -85,11 +65,10 @@ export default async function RafflePage({
           </div>
         ) : null}
 
-        <RaffleNumberGrid
+        <RaffleOrderForm
           raffleId={raffle.id}
           pricePerNumber={raffle.pricePerNumber}
           reservationMinutes={raffle.reservationMinutes}
-          initialNumbers={numbers}
           purchasable={raffle.status === "ACTIVE"}
         />
       </main>

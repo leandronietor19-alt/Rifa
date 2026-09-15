@@ -26,7 +26,6 @@ export default function EditRaffleForm({
         initialValues={initialValues}
         submitLabel="Guardar cambios"
         showStatus
-        numbersEditable={false}
         onSubmit={handleSubmit}
       />
       {saved && <p className="text-sm text-green-700 mt-3">Cambios guardados.</p>}

@@ -148,7 +148,7 @@ function OrderCard({ order }: { order: OrderRow }) {
             disabled={isPending}
             className="rounded-md px-3 py-1.5 text-xs border border-black/15 text-black/70 hover:bg-black/5"
           >
-            Cancelar y liberar números
+            Cancelar pedido
           </button>
         </div>
       )}

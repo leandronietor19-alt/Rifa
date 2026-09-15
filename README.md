@@ -1,24 +1,26 @@
 # Rifa Debate España
 
-Web para gestionar la venta de números de una rifa: la gente elige y reserva
-sus números, paga por Bizum o transferencia, y la organización confirma los
-pagos desde un panel de administración.
+Web para gestionar la venta de números de una rifa: la gente elige cuántos
+números quiere, se le asignan automáticamente (sin límite), paga por Bizum
+o transferencia, y la organización confirma los pagos desde un panel de
+administración.
 
 ## Funcionalidades
 
-- **Página pública de la rifa**: cuadrícula de números (disponible /
-  reservado / vendido), selección múltiple, buscador de números y progreso
-  de ventas en vivo.
-- **Reserva con temporizador**: al elegir números y dejar tus datos, se
-  reservan durante un tiempo configurable (por defecto 60 min) mientras
-  completas el pago. Si no se confirma a tiempo, vuelven a estar
-  disponibles automáticamente.
+- **Página pública de la rifa**: el comprador solo elige cuántos números
+  quiere — se le asignan automáticamente los siguientes en la secuencia, sin
+  límite máximo de números.
+- **Reserva con temporizador**: al confirmar cuántos números y dejar tus
+  datos, se reservan durante un tiempo configurable (por defecto 60 min)
+  mientras completas el pago. Si no se confirma a tiempo, el pedido caduca
+  (los números asignados a ese pedido no se reutilizan, simplemente quedan
+  sin vender).
 - **Pago manual (Bizum / transferencia)**: cada pedido muestra los datos de
   pago de la rifa y permite dejar una referencia para que la organización
   identifique el ingreso.
 - **Panel de administración** (`/admin`): crear rifas, activarlas/cerrarlas,
-  editar datos e información de pago, ver estadísticas (vendidos,
-  reservados, recaudado) y confirmar o cancelar pedidos.
+  editar datos e información de pago, ver estadísticas (pendientes,
+  vendidos, recaudado) y confirmar o cancelar pedidos.
 - Protegido con una cuenta de administrador (correo + contraseña).
 
 ## Stack
@@ -77,14 +79,17 @@ entrar como administrador.
 
 1. Entra en `/admin/login` con las credenciales creadas en el seed.
 2. Crea una rifa desde "+ Nueva rifa": título, descripción, premio, precio
-   por número, cantidad de números, fecha del sorteo, minutos de reserva y
-   datos de pago (Bizum / cuenta bancaria).
+   por número, dígitos (solo estético, para el formato 0001/0002…), fecha
+   del sorteo, minutos de reserva y datos de pago (Bizum / cuenta
+   bancaria). No hay que fijar una cantidad total de números — no tiene
+   límite.
 3. Cambia el estado de la rifa a **Activa** para que aparezca en la portada
    y se puedan comprar números.
 4. Cuando alguien reserva números, aparece como pedido **Pendiente** en el
-   panel de la rifa. Comprueba el pago (Bizum/transferencia) y pulsa
-   **Confirmar pago** — los números pasan a vendidos. Si no llega el pago o
-   quieres anularlo, usa **Cancelar**.
+   panel de la rifa con los números que se le asignaron automáticamente.
+   Comprueba el pago (Bizum/transferencia) y pulsa **Confirmar pago** — los
+   números pasan a vendidos. Si no llega el pago o quieres anularlo, usa
+   **Cancelar**.
 5. Al terminar la rifa, cambia su estado a **Cerrada**.
 
 ## Despliegue en Vercel
@@ -120,7 +125,7 @@ prisma/schema.prisma        Modelo de datos (Raffle, RaffleNumber, Order, Admin)
 scripts/seed.ts              Crea/actualiza el usuario administrador
 src/lib/                     Prisma client, sesión de admin, validaciones, utilidades de rifa
 src/app/page.tsx             Portada (redirige a la rifa activa)
-src/app/rifa/[id]/           Página pública de una rifa + selección de números
+src/app/rifa/[id]/           Página pública de una rifa + compra (cantidad de números)
 src/app/pedido/[id]/         Estado del pedido y datos de pago
 src/app/admin/               Login y panel de administración (protegido)
 src/app/api/cron/            Endpoint para liberar reservas caducadas

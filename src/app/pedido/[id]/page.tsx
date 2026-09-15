@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { releaseExpiredReservations, formatCurrency } from "@/lib/raffle";
+import { releaseExpiredReservations, formatCurrency, formatRaffleNumber } from "@/lib/raffle";
 import CountdownTimer from "./CountdownTimer";
 import PaymentReferenceForm from "./PaymentReferenceForm";
 
@@ -70,7 +70,7 @@ export default async function OrderPage({
                 key={n.id}
                 className="font-mono text-sm bg-brand-navy text-white rounded px-2 py-1"
               >
-                {n.number}
+                {formatRaffleNumber(n.number, order.raffle.digits)}
               </span>
             ))}
           </div>

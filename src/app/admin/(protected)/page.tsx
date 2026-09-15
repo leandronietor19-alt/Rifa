@@ -12,11 +12,9 @@ export default async function AdminDashboardPage() {
   const raffles = await prisma.raffle.findMany({
     orderBy: { createdAt: "desc" },
     include: {
-      _count: { select: { numbers: true } },
-      numbers: { where: { status: "SOLD" }, select: { id: true } },
       orders: {
         where: { status: "PAID" },
-        select: { totalAmount: true },
+        select: { quantity: true, totalAmount: true },
       },
     },
   });
@@ -35,6 +33,7 @@ export default async function AdminDashboardPage() {
       ) : (
         <div className="space-y-3">
           {raffles.map((r) => {
+            const sold = r.orders.reduce((sum, o) => sum + o.quantity, 0);
             const revenue = r.orders.reduce((sum, o) => sum + o.totalAmount, 0);
             return (
               <Link
@@ -49,8 +48,7 @@ export default async function AdminDashboardPage() {
                   </span>
                 </div>
                 <p className="text-sm text-black/60 mt-1">
-                  {r.numbers.length} / {r._count.numbers} números vendidos ·{" "}
-                  {formatCurrency(revenue)} recaudados
+                  {sold} números vendidos · {formatCurrency(revenue)} recaudados
                 </p>
               </Link>
             );

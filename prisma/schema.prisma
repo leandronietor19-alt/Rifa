@@ -7,12 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum NumberStatus {
-  AVAILABLE
-  RESERVED
-  SOLD
-}
-
 enum OrderStatus {
   PENDING
   PAID
@@ -41,8 +35,8 @@ model Raffle {
   prizeDescription String
   imageUrl         String?
   pricePerNumber   Int
-  totalNumbers     Int
-  digits           Int
+  digits           Int          @default(4)
+  nextNumber       Int          @default(1)
   drawDate         DateTime
   status           RaffleStatus @default(DRAFT)
 
@@ -62,20 +56,20 @@ model Raffle {
   @@index([status])
 }
 
+/// A raffle ticket number, assigned sequentially and permanently to an
+/// order when it's created. Numbers are never reused (even if the order
+/// is later cancelled/expires), so there's no "available pool" to manage.
 model RaffleNumber {
-  id       String       @id @default(cuid())
+  id       String @id @default(cuid())
   raffleId String
-  raffle   Raffle       @relation(fields: [raffleId], references: [id], onDelete: Cascade)
-  number   String
-  status   NumberStatus @default(AVAILABLE)
+  raffle   Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  number   Int
 
-  orderId String?
-  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
-
-  reservedUntil DateTime?
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([raffleId, number])
-  @@index([raffleId, status])
+  @@index([raffleId])
   @@index([orderId])
 }
 

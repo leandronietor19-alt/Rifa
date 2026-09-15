@@ -8,7 +8,6 @@ export type RaffleFormValues = {
   prizeDescription: string;
   imageUrl: string;
   pricePerNumberEuros: string;
-  totalNumbers: string;
   digits: string;
   drawDate: string;
   bizumPhone: string;
@@ -25,8 +24,7 @@ export const emptyRaffleForm: RaffleFormValues = {
   prizeDescription: "",
   imageUrl: "",
   pricePerNumberEuros: "2",
-  totalNumbers: "100",
-  digits: "2",
+  digits: "4",
   drawDate: "",
   bizumPhone: "",
   bankAccount: "",
@@ -40,13 +38,11 @@ export default function RaffleForm({
   initialValues,
   submitLabel,
   showStatus,
-  numbersEditable = true,
   onSubmit,
 }: {
   initialValues: RaffleFormValues;
   submitLabel: string;
   showStatus: boolean;
-  numbersEditable?: boolean;
   onSubmit: (values: RaffleFormValues) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [values, setValues] = useState(initialValues);
@@ -133,55 +129,34 @@ export default function RaffleForm({
 
       <div className="grid grid-cols-2 gap-4">
         <Field
-          label="Cantidad de números"
-          hint={
-            numbersEditable
-              ? "No se puede cambiar una vez creada la rifa."
-              : undefined
-          }
-        >
-          <input
-            required
-            type="number"
-            min={10}
-            max={100000}
-            disabled={!numbersEditable}
-            value={values.totalNumbers}
-            onChange={(e) => set("totalNumbers", e.target.value)}
-            className="input disabled:bg-black/5"
-          />
-        </Field>
-        <Field
           label="Dígitos por número"
-          hint={numbersEditable ? "Ej: 2 → 00, 01… 99" : undefined}
+          hint="Solo estético, ej: 4 → 0001, 0002… No limita cuántos se pueden vender."
         >
           <input
             required
             type="number"
             min={1}
             max={6}
-            disabled={!numbersEditable}
             value={values.digits}
             onChange={(e) => set("digits", e.target.value)}
-            className="input disabled:bg-black/5"
+            className="input"
+          />
+        </Field>
+        <Field
+          label="Minutos de reserva"
+          hint="Tiempo que se bloquea un pedido mientras el comprador paga."
+        >
+          <input
+            required
+            type="number"
+            min={5}
+            max={10080}
+            value={values.reservationMinutes}
+            onChange={(e) => set("reservationMinutes", e.target.value)}
+            className="input"
           />
         </Field>
       </div>
-
-      <Field
-        label="Minutos de reserva"
-        hint="Tiempo que se bloquea un número mientras el comprador paga."
-      >
-        <input
-          required
-          type="number"
-          min={5}
-          max={10080}
-          value={values.reservationMinutes}
-          onChange={(e) => set("reservationMinutes", e.target.value)}
-          className="input max-w-40"
-        />
-      </Field>
 
       <div className="border-t border-black/10 pt-4">
         <h3 className="font-semibold mb-3">Información de pago</h3>

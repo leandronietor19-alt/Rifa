@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { releaseExpiredReservations, formatCurrency } from "@/lib/raffle";
+import { releaseExpiredReservations, formatCurrency, formatRaffleNumber } from "@/lib/raffle";
 import EditRaffleForm from "./EditRaffleForm";
 import OrdersTable, { type OrderRow } from "./OrdersTable";
 import type { RaffleFormValues } from "@/components/RaffleForm";
@@ -24,24 +24,18 @@ export default async function AdminRafflePage({
   const raffle = await prisma.raffle.findUnique({ where: { id } });
   if (!raffle) notFound();
 
-  const [numberStats, orders] = await Promise.all([
-    prisma.raffleNumber.groupBy({
-      by: ["status"],
-      where: { raffleId: id },
-      _count: true,
-    }),
-    prisma.order.findMany({
-      where: { raffleId: id },
-      orderBy: { createdAt: "desc" },
-      include: { numbers: { select: { number: true } } },
-    }),
-  ]);
-
-  const stats = { AVAILABLE: 0, RESERVED: 0, SOLD: 0 } as Record<string, number>;
-  numberStats.forEach((s) => {
-    stats[s.status] = s._count;
+  const orders = await prisma.order.findMany({
+    where: { raffleId: id },
+    orderBy: { createdAt: "desc" },
+    include: { numbers: { select: { number: true } } },
   });
 
+  const pendingCount = orders
+    .filter((o) => o.status === "PENDING")
+    .reduce((sum, o) => sum + o.quantity, 0);
+  const soldCount = orders
+    .filter((o) => o.status === "PAID")
+    .reduce((sum, o) => sum + o.quantity, 0);
   const revenue = orders
     .filter((o) => o.status === "PAID")
     .reduce((sum, o) => sum + o.totalAmount, 0);
@@ -56,7 +50,10 @@ export default async function AdminRafflePage({
     status: o.status,
     paymentReference: o.paymentReference,
     createdAt: o.createdAt.toISOString(),
-    numbers: o.numbers.map((n) => n.number).sort(),
+    numbers: o.numbers
+      .map((n) => n.number)
+      .sort((a, b) => a - b)
+      .map((n) => formatRaffleNumber(n, raffle.digits)),
   }));
 
   const initialValues: RaffleFormValues = {
@@ -65,7 +62,6 @@ export default async function AdminRafflePage({
     prizeDescription: raffle.prizeDescription,
     imageUrl: raffle.imageUrl ?? "",
     pricePerNumberEuros: (raffle.pricePerNumber / 100).toString(),
-    totalNumbers: raffle.totalNumbers.toString(),
     digits: raffle.digits.toString(),
     drawDate: toLocalDatetimeInputValue(raffle.drawDate),
     bizumPhone: raffle.bizumPhone ?? "",
@@ -85,10 +81,9 @@ export default async function AdminRafflePage({
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 my-6 text-sm">
-        <StatCard label="Disponibles" value={stats.AVAILABLE ?? 0} />
-        <StatCard label="Reservados" value={stats.RESERVED ?? 0} />
-        <StatCard label="Vendidos" value={stats.SOLD ?? 0} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 my-6 text-sm">
+        <StatCard label="Pendientes" value={pendingCount} />
+        <StatCard label="Vendidos" value={soldCount} />
         <StatCard label="Recaudado" value={formatCurrency(revenue)} />
       </div>
 

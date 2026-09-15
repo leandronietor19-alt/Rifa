@@ -19,7 +19,6 @@ export default function NewRaffleForm() {
       initialValues={emptyRaffleForm}
       submitLabel="Crear rifa"
       showStatus={false}
-      numbersEditable
       onSubmit={handleSubmit}
     />
   );

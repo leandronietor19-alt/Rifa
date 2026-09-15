@@ -30,6 +30,7 @@ export async function updateRaffle(raffleId: string, values: RaffleFormValues) {
       prizeDescription: data.prizeDescription,
       imageUrl: data.imageUrl || null,
       pricePerNumber: Math.round(data.pricePerNumberEuros * 100),
+      digits: data.digits,
       drawDate,
       status,
       bizumPhone: data.bizumPhone || null,
@@ -53,16 +54,10 @@ export async function confirmOrder(orderId: string) {
     return { ok: false as const, error: "Este pedido no se puede confirmar." };
   }
 
-  await prisma.$transaction([
-    prisma.order.update({
-      where: { id: orderId },
-      data: { status: "PAID", confirmedAt: new Date() },
-    }),
-    prisma.raffleNumber.updateMany({
-      where: { orderId },
-      data: { status: "SOLD", reservedUntil: null },
-    }),
-  ]);
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { status: "PAID", confirmedAt: new Date() },
+  });
 
   revalidatePath(`/admin/rifas/${order.raffleId}`);
   revalidatePath(`/rifa/${order.raffleId}`);
@@ -78,16 +73,10 @@ export async function cancelOrder(orderId: string) {
     return { ok: false as const, error: "Este pedido no se puede cancelar." };
   }
 
-  await prisma.$transaction([
-    prisma.order.update({
-      where: { id: orderId },
-      data: { status: "CANCELLED", cancelledAt: new Date() },
-    }),
-    prisma.raffleNumber.updateMany({
-      where: { orderId },
-      data: { status: "AVAILABLE", orderId: null, reservedUntil: null },
-    }),
-  ]);
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { status: "CANCELLED", cancelledAt: new Date() },
+  });
 
   revalidatePath(`/admin/rifas/${order.raffleId}`);
   revalidatePath(`/rifa/${order.raffleId}`);
