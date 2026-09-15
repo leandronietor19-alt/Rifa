@@ -1,8 +1,10 @@
 "use server";
 
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createOrderSchema } from "@/lib/validation";
-import { releaseExpiredReservations } from "@/lib/raffle";
+import { releaseExpiredReservations, getSiteUrl } from "@/lib/raffle";
+import { sendNewOrderEmails } from "@/lib/email";
 
 export type CreateOrderResult =
   | { ok: true; orderId: string }
@@ -18,7 +20,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
   await releaseExpiredReservations(raffleId);
 
   try {
-    const order = await prisma.$transaction(async (tx) => {
+    const { order, raffle, numbers } = await prisma.$transaction(async (tx) => {
       const current = await tx.raffle.findUnique({ where: { id: raffleId } });
       if (!current || current.status !== "ACTIVE") {
         throw new Error("RAFFLE_NOT_ACTIVE");
@@ -31,6 +33,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
         data: { nextNumber: { increment: quantity } },
       });
       const firstNumber = raffle.nextNumber - quantity;
+      const numbers = Array.from({ length: quantity }, (_, i) => firstNumber + i);
 
       const reservedUntil = new Date(
         Date.now() + raffle.reservationMinutes * 60 * 1000
@@ -50,15 +53,31 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
       });
 
       await tx.raffleNumber.createMany({
-        data: Array.from({ length: quantity }, (_, i) => ({
-          raffleId,
-          orderId: order.id,
-          number: firstNumber + i,
-        })),
+        data: numbers.map((number) => ({ raffleId, orderId: order.id, number })),
       });
 
-      return order;
+      return { order, raffle, numbers };
     });
+
+    after(() =>
+      sendNewOrderEmails({
+        raffleId,
+        raffleTitle: raffle.title,
+        buyerName,
+        buyerEmail,
+        buyerPhone,
+        numbers,
+        digits: raffle.digits,
+        totalAmount: order.totalAmount,
+        reservationMinutes: raffle.reservationMinutes,
+        bizumPhone: raffle.bizumPhone,
+        bankAccount: raffle.bankAccount,
+        bankHolder: raffle.bankHolder,
+        paymentNotes: raffle.paymentNotes,
+        orderId: order.id,
+        siteUrl: getSiteUrl(),
+      }).catch((err) => console.error("Email send failed", err))
+    );
 
     return { ok: true, orderId: order.id };
   } catch (err) {

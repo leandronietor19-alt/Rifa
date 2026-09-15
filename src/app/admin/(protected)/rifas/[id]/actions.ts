@@ -1,9 +1,12 @@
 "use server";
 
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { raffleFormSchema } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
+import { getSiteUrl } from "@/lib/raffle";
+import { sendPaymentConfirmedEmail } from "@/lib/email";
 import type { RaffleFormValues } from "@/components/RaffleForm";
 
 export async function updateRaffle(raffleId: string, values: RaffleFormValues) {
@@ -49,7 +52,10 @@ export async function updateRaffle(raffleId: string, values: RaffleFormValues) {
 export async function confirmOrder(orderId: string) {
   await requireAdmin();
 
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { raffle: true, numbers: { select: { number: true } } },
+  });
   if (!order || order.status !== "PENDING") {
     return { ok: false as const, error: "Este pedido no se puede confirmar." };
   }
@@ -58,6 +64,18 @@ export async function confirmOrder(orderId: string) {
     where: { id: orderId },
     data: { status: "PAID", confirmedAt: new Date() },
   });
+
+  after(() =>
+    sendPaymentConfirmedEmail({
+      buyerEmail: order.buyerEmail,
+      buyerName: order.buyerName,
+      raffleTitle: order.raffle.title,
+      numbers: order.numbers.map((n) => n.number),
+      digits: order.raffle.digits,
+      siteUrl: getSiteUrl(),
+      orderId: order.id,
+    }).catch((err) => console.error("Email send failed", err))
+  );
 
   revalidatePath(`/admin/rifas/${order.raffleId}`);
   revalidatePath(`/rifa/${order.raffleId}`);

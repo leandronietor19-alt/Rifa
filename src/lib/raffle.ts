@@ -4,6 +4,12 @@ export function formatRaffleNumber(n: number, digits: number): string {
   return n.toString().padStart(digits, "0");
 }
 
+export function getSiteUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
 export function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString("es-ES", {
     style: "currency",
