@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f5f0;
+  --foreground: #1a1f2e;
+
+  --color-brand-navy: #14213d;
+  --color-brand-navy-light: #1f3157;
+  --color-brand-gold: #e0a527;
+  --color-brand-gold-dark: #b8860f;
+
+  --color-status-available: #e8ede4;
+  --color-status-reserved: #fdecc8;
+  --color-status-sold: #e6e6e6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-navy: var(--color-brand-navy);
+  --color-brand-navy-light: var(--color-brand-navy-light);
+  --color-brand-gold: var(--color-brand-gold);
+  --color-brand-gold-dark: var(--color-brand-gold-dark);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.btn-primary {
+  background-color: var(--color-brand-gold);
+  color: #1a1200;
+  font-weight: 600;
+  transition: background-color 0.15s ease;
+}
+.btn-primary:hover {
+  background-color: var(--color-brand-gold-dark);
+}
+.btn-primary:disabled {
+  background-color: #d8d3c7;
+  color: #8a8578;
+  cursor: not-allowed;
+}

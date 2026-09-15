@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum NumberStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  EXPIRED
+}
+
+enum RaffleStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+}
+
+model Raffle {
+  id               String       @id @default(cuid())
+  title            String
+  description      String
+  prizeDescription String
+  imageUrl         String?
+  pricePerNumber   Int
+  totalNumbers     Int
+  digits           Int
+  drawDate         DateTime
+  status           RaffleStatus @default(DRAFT)
+
+  bizumPhone     String?
+  bankAccount    String?
+  bankHolder     String?
+  paymentNotes   String?
+
+  reservationMinutes Int @default(60)
+
+  numbers RaffleNumber[]
+  orders  Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model RaffleNumber {
+  id       String       @id @default(cuid())
+  raffleId String
+  raffle   Raffle       @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  number   String
+  status   NumberStatus @default(AVAILABLE)
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  reservedUntil DateTime?
+
+  @@unique([raffleId, number])
+  @@index([raffleId, status])
+  @@index([orderId])
+}
+
+model Order {
+  id       String @id @default(cuid())
+  raffleId String
+  raffle   Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+
+  buyerName  String
+  buyerEmail String
+  buyerPhone String
+
+  numbers      RaffleNumber[]
+  quantity     Int
+  totalAmount  Int
+  status       OrderStatus @default(PENDING)
+
+  paymentReference String?
+  adminNotes       String?
+
+  reservedUntil DateTime?
+  confirmedAt   DateTime?
+  cancelledAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([raffleId, status])
+  @@index([buyerEmail])
+}
