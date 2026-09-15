@@ -1,12 +1,12 @@
 import { Resend } from "resend";
-import { formatCurrency, formatRaffleNumber } from "@/lib/raffle";
+import { formatCurrency } from "@/lib/store";
 
 let resendClient: Resend | null | undefined;
 
 /**
  * Email is optional: if RESEND_API_KEY isn't set, every send* function here
- * silently no-ops instead of throwing, so the reservation flow always works
- * even before email is configured.
+ * silently no-ops instead of throwing, so checkout always works even
+ * before email is configured.
  */
 function getResendClient(): Resend | null {
   if (resendClient !== undefined) return resendClient;
@@ -23,43 +23,51 @@ function getNotificationEmail(): string | null {
   return process.env.NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || null;
 }
 
-type OrderEmailData = {
-  raffleId: string;
-  raffleTitle: string;
+type EmailOrderItem = {
+  productName: string;
+  variantLabel: string;
+  unitPrice: number;
+  quantity: number;
+};
+
+function itemsToHtml(items: EmailOrderItem[]): string {
+  return items
+    .map(
+      (i) =>
+        `<li>${i.quantity}× ${i.productName} (${i.variantLabel}) — ${formatCurrency(
+          i.unitPrice * i.quantity
+        )}</li>`
+    )
+    .join("");
+}
+
+type NewOrderEmailData = {
+  orderId: string;
+  storeName: string;
   buyerName: string;
   buyerEmail: string;
   buyerPhone: string;
-  numbers: number[];
-  digits: number;
+  items: EmailOrderItem[];
   totalAmount: number;
   reservationMinutes: number;
   bizumPhone: string | null;
   bankAccount: string | null;
   bankHolder: string | null;
   paymentNotes: string | null;
-  orderId: string;
   siteUrl: string;
 };
 
-export async function sendNewOrderEmails(data: OrderEmailData) {
+export async function sendNewOrderEmails(data: NewOrderEmailData) {
   const client = getResendClient();
   if (!client) return;
 
-  const numbersFormatted = data.numbers
-    .map((n) => formatRaffleNumber(n, data.digits))
-    .join(", ");
-
   await Promise.allSettled([
-    sendBuyerConfirmation(client, data, numbersFormatted),
-    sendAdminNotification(client, data, numbersFormatted),
+    sendBuyerConfirmation(client, data),
+    sendAdminNotification(client, data),
   ]);
 }
 
-async function sendBuyerConfirmation(
-  client: Resend,
-  data: OrderEmailData,
-  numbersFormatted: string
-) {
+async function sendBuyerConfirmation(client: Resend, data: NewOrderEmailData) {
   const paymentLines: string[] = [];
   if (data.bizumPhone) paymentLines.push(`<p><strong>Bizum:</strong> ${data.bizumPhone}</p>`);
   if (data.bankAccount) {
@@ -77,14 +85,14 @@ async function sendBuyerConfirmation(
     await client.emails.send({
       from: getFromAddress(),
       to: data.buyerEmail,
-      subject: `Tu reserva en "${data.raffleTitle}"`,
+      subject: `Tu pedido en ${data.storeName}`,
       html: `
         <p>Hola ${data.buyerName},</p>
-        <p>Has reservado ${data.numbers.length} número(s) en <strong>${data.raffleTitle}</strong>:</p>
-        <p style="font-size:18px;font-weight:bold;">${numbersFormatted}</p>
+        <p>Hemos recibido tu pedido en <strong>${data.storeName}</strong>:</p>
+        <ul>${itemsToHtml(data.items)}</ul>
         <p>Total a pagar: <strong>${formatCurrency(data.totalAmount)}</strong></p>
         ${paymentLines.join("\n")}
-        <p>Indica en el concepto tu nombre y los números reservados para que podamos identificar tu pago.</p>
+        <p>Indica en el concepto tu nombre y el número de pedido para que podamos identificar tu pago.</p>
         <p>Tienes ${data.reservationMinutes} minutos para completar el pago antes de que la reserva caduque.</p>
         <p><a href="${data.siteUrl}/pedido/${data.orderId}">Ver mi pedido</a></p>
       `,
@@ -94,11 +102,7 @@ async function sendBuyerConfirmation(
   }
 }
 
-async function sendAdminNotification(
-  client: Resend,
-  data: OrderEmailData,
-  numbersFormatted: string
-) {
+async function sendAdminNotification(client: Resend, data: NewOrderEmailData) {
   const to = getNotificationEmail();
   if (!to) return;
 
@@ -106,13 +110,13 @@ async function sendAdminNotification(
     await client.emails.send({
       from: getFromAddress(),
       to,
-      subject: `Nueva reserva: ${data.buyerName} · ${data.numbers.length} número(s)`,
+      subject: `Nuevo pedido: ${data.buyerName} · ${formatCurrency(data.totalAmount)}`,
       html: `
-        <p>Nueva reserva en <strong>${data.raffleTitle}</strong>.</p>
+        <p>Nuevo pedido en <strong>${data.storeName}</strong>.</p>
         <p><strong>Comprador:</strong> ${data.buyerName} — ${data.buyerEmail} — ${data.buyerPhone}</p>
-        <p><strong>Números:</strong> ${numbersFormatted}</p>
+        <ul>${itemsToHtml(data.items)}</ul>
         <p><strong>Total:</strong> ${formatCurrency(data.totalAmount)}</p>
-        <p><a href="${data.siteUrl}/admin/rifas/${data.raffleId}">Ver en el panel de administración</a></p>
+        <p><a href="${data.siteUrl}/admin/pedidos">Ver en el panel de administración</a></p>
       `,
     });
   } catch (err) {
@@ -123,29 +127,24 @@ async function sendAdminNotification(
 export async function sendPaymentConfirmedEmail(data: {
   buyerEmail: string;
   buyerName: string;
-  raffleTitle: string;
-  numbers: number[];
-  digits: number;
+  storeName: string;
+  items: EmailOrderItem[];
   siteUrl: string;
   orderId: string;
 }) {
   const client = getResendClient();
   if (!client) return;
 
-  const numbersFormatted = data.numbers
-    .map((n) => formatRaffleNumber(n, data.digits))
-    .join(", ");
-
   try {
     await client.emails.send({
       from: getFromAddress(),
       to: data.buyerEmail,
-      subject: `¡Pago confirmado! Ya participas en "${data.raffleTitle}"`,
+      subject: `¡Pago confirmado! Tu pedido en ${data.storeName} va en camino`,
       html: `
         <p>Hola ${data.buyerName},</p>
-        <p>Hemos confirmado tu pago. Estos son tus números para <strong>${data.raffleTitle}</strong>:</p>
-        <p style="font-size:18px;font-weight:bold;">${numbersFormatted}</p>
-        <p>¡Mucha suerte!</p>
+        <p>Hemos confirmado tu pago. Tu pedido en <strong>${data.storeName}</strong>:</p>
+        <ul>${itemsToHtml(data.items)}</ul>
+        <p>Lo prepararemos y te lo enviaremos en breve. ¡Gracias por tu compra!</p>
         <p><a href="${data.siteUrl}/pedido/${data.orderId}">Ver mi pedido</a></p>
       `,
     });

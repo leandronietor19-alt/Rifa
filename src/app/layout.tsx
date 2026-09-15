@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { CartProvider } from "@/lib/cart-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,11 +13,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Rifa Debate España";
+const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Baboon";
 
 export const metadata: Metadata = {
   title: siteName,
-  description: `Compra tus números para la rifa de ${siteName}`,
+  description: `Tienda oficial de merchandising de ${siteName}`,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -26,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <CartProvider>{children}</CartProvider>
       </body>
     </html>
   );

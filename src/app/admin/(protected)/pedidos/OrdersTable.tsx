@@ -8,12 +8,12 @@ export type OrderRow = {
   buyerName: string;
   buyerEmail: string;
   buyerPhone: string;
-  quantity: number;
+  buyerAddress: string;
   totalAmount: number;
   status: "PENDING" | "PAID" | "CANCELLED" | "EXPIRED";
   paymentReference: string | null;
   createdAt: string;
-  numbers: string[];
+  items: { productName: string; variantLabel: string; quantity: number }[];
 };
 
 const STATUS_LABEL: Record<OrderRow["status"], { label: string; className: string }> = {
@@ -95,19 +95,21 @@ function OrderCard({ order }: { order: OrderRow }) {
           <p className="text-xs text-black/60">
             {order.buyerEmail} · {order.buyerPhone}
           </p>
+          <p className="text-xs text-black/50 whitespace-pre-line">{order.buyerAddress}</p>
         </div>
         <span className={`text-xs rounded-full px-2.5 py-1 font-medium ${statusInfo.className}`}>
           {statusInfo.label}
         </span>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1">
-        {order.numbers.map((n) => (
-          <span key={n} className="font-mono text-xs bg-black/5 rounded px-1.5 py-0.5">
-            {n}
-          </span>
+      <ul className="mt-2 text-sm space-y-0.5">
+        {order.items.map((item, i) => (
+          <li key={i} className="text-black/70">
+            {item.quantity}× {item.productName}{" "}
+            <span className="text-black/50">({item.variantLabel})</span>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-semibold">{formatEuros(order.totalAmount)}</span>
@@ -115,9 +117,7 @@ function OrderCard({ order }: { order: OrderRow }) {
           {new Date(order.createdAt).toLocaleString("es-ES")}
         </span>
         {order.paymentReference && (
-          <span className="text-black/70 text-xs">
-            Ref: {order.paymentReference}
-          </span>
+          <span className="text-black/70 text-xs">Ref: {order.paymentReference}</span>
         )}
       </div>
 

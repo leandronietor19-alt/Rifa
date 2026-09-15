@@ -14,10 +14,10 @@ enum OrderStatus {
   EXPIRED
 }
 
-enum RaffleStatus {
+enum ProductStatus {
   DRAFT
   ACTIVE
-  CLOSED
+  ARCHIVED
 }
 
 model Admin {
@@ -28,27 +28,30 @@ model Admin {
   createdAt    DateTime @default(now())
 }
 
-model Raffle {
-  id               String       @id @default(cuid())
-  title            String
-  description      String
-  prizeDescription String
-  imageUrl         String?
-  pricePerNumber   Int
-  digits           Int          @default(4)
-  nextNumber       Int          @default(1)
-  drawDate         DateTime
-  status           RaffleStatus @default(DRAFT)
+/// Single-row table (id is always "default") holding store-wide info: name,
+/// description, payment instructions and how long a cart reservation holds
+/// stock before it's released back.
+model StoreSettings {
+  id                 String   @id
+  storeName          String
+  description        String
+  logoUrl            String?
+  bizumPhone         String?
+  bankAccount        String?
+  bankHolder         String?
+  paymentNotes       String?
+  reservationMinutes Int      @default(60)
+  updatedAt          DateTime @updatedAt
+}
 
-  bizumPhone     String?
-  bankAccount    String?
-  bankHolder     String?
-  paymentNotes   String?
+model Product {
+  id          String        @id @default(cuid())
+  name        String
+  description String
+  imageUrl    String?
+  status      ProductStatus @default(DRAFT)
 
-  reservationMinutes Int @default(60)
-
-  numbers RaffleNumber[]
-  orders  Order[]
+  variants ProductVariant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -56,36 +59,37 @@ model Raffle {
   @@index([status])
 }
 
-/// A raffle ticket number, assigned sequentially and permanently to an
-/// order when it's created. Numbers are never reused (even if the order
-/// is later cancelled/expires), so there's no "available pool" to manage.
-model RaffleNumber {
-  id       String @id @default(cuid())
-  raffleId String
-  raffle   Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
-  number   Int
+/// Every product has one or more variants (e.g. sizes, colors) even if it's
+/// really just a single option — that keeps price/stock uniformly on the
+/// variant instead of duplicated on both Product and ProductVariant.
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  label String // e.g. "M", "Talla única", "Rojo - L"
+  price Int // cents
+  stock Int  @default(0)
 
-  @@unique([raffleId, number])
-  @@index([raffleId])
-  @@index([orderId])
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
 }
 
 model Order {
-  id       String @id @default(cuid())
-  raffleId String
-  raffle   Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
 
-  buyerName  String
-  buyerEmail String
-  buyerPhone String
+  buyerName    String
+  buyerEmail   String
+  buyerPhone   String
+  buyerAddress String
 
-  numbers      RaffleNumber[]
-  quantity     Int
-  totalAmount  Int
-  status       OrderStatus @default(PENDING)
+  items       OrderItem[]
+  totalAmount Int
+  status      OrderStatus @default(PENDING)
 
   paymentReference String?
   adminNotes       String?
@@ -97,6 +101,25 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([raffleId, status])
+  @@index([status])
   @@index([buyerEmail])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productVariantId String?
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+
+  // Snapshots so order history stays accurate even if the product/variant is
+  // later edited, renamed or deleted.
+  productName  String
+  variantLabel String
+  unitPrice    Int
+  quantity     Int
+
+  @@index([orderId])
+  @@index([productVariantId])
 }

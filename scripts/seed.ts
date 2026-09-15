@@ -23,6 +23,21 @@ async function main() {
   });
 
   console.log(`Admin listo: ${admin.email}`);
+
+  // Only create on first run — leave later edits made from /admin/ajustes
+  // alone on subsequent deploys instead of overwriting them every time.
+  await prisma.storeSettings.upsert({
+    where: { id: "default" },
+    update: {},
+    create: {
+      id: "default",
+      storeName: process.env.NEXT_PUBLIC_SITE_NAME || "Baboon",
+      description: "Merchandising oficial de Baboon.",
+      reservationMinutes: 60,
+    },
+  });
+
+  console.log("Ajustes de tienda listos.");
 }
 
 main()

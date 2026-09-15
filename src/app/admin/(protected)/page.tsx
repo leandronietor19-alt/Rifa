@@ -1,60 +1,90 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatCurrency } from "@/lib/raffle";
-
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "Borrador",
-  ACTIVE: "Activa",
-  CLOSED: "Cerrada",
-};
+import { formatCurrency } from "@/lib/store";
 
 export default async function AdminDashboardPage() {
-  const raffles = await prisma.raffle.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      orders: {
-        where: { status: "PAID" },
-        select: { quantity: true, totalAmount: true },
-      },
-    },
-  });
+  const [pendingOrders, paidOrders, products, lowStock] = await Promise.all([
+    prisma.order.count({ where: { status: "PENDING" } }),
+    prisma.order.findMany({ where: { status: "PAID" }, select: { totalAmount: true } }),
+    prisma.product.count(),
+    prisma.productVariant.findMany({
+      where: { stock: { lte: 3 }, product: { status: "ACTIVE" } },
+      include: { product: true },
+      orderBy: { stock: "asc" },
+      take: 10,
+    }),
+  ]);
+
+  const revenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-brand-navy">Rifas</h1>
-        <Link href="/admin/rifas/nueva" className="btn-primary rounded-md px-4 py-2 text-sm">
-          + Nueva rifa
+      <h1 className="text-2xl font-bold text-brand-navy mb-6">Resumen</h1>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 text-sm">
+        <StatCard label="Pedidos pendientes" value={pendingOrders} href="/admin/pedidos" />
+        <StatCard label="Recaudado" value={formatCurrency(revenue)} />
+        <StatCard label="Productos" value={products} href="/admin/productos" />
+        <StatCard label="Stock bajo" value={lowStock.length} />
+      </div>
+
+      <div className="flex gap-3 mb-8">
+        <Link href="/admin/productos/nuevo" className="btn-primary rounded-md px-4 py-2 text-sm">
+          + Nuevo producto
+        </Link>
+        <Link
+          href="/admin/pedidos"
+          className="rounded-md px-4 py-2 text-sm border border-black/15 hover:bg-black/5"
+        >
+          Ver pedidos
         </Link>
       </div>
 
-      {raffles.length === 0 ? (
-        <p className="text-black/60">Todavía no has creado ninguna rifa.</p>
-      ) : (
-        <div className="space-y-3">
-          {raffles.map((r) => {
-            const sold = r.orders.reduce((sum, o) => sum + o.quantity, 0);
-            const revenue = r.orders.reduce((sum, o) => sum + o.totalAmount, 0);
-            return (
+      {lowStock.length > 0 && (
+        <section>
+          <h2 className="font-semibold text-lg mb-3">Stock bajo (≤ 3 unidades)</h2>
+          <div className="space-y-2">
+            {lowStock.map((v) => (
               <Link
-                key={r.id}
-                href={`/admin/rifas/${r.id}`}
-                className="block border border-black/10 rounded-xl p-4 bg-white hover:border-brand-gold transition-colors"
+                key={v.id}
+                href={`/admin/productos/${v.productId}`}
+                className="flex items-center justify-between border border-black/10 rounded-lg px-4 py-2 bg-white hover:border-brand-gold text-sm"
               >
-                <div className="flex items-center justify-between">
-                  <h2 className="font-semibold">{r.title}</h2>
-                  <span className="text-xs rounded-full bg-black/5 px-2.5 py-1">
-                    {STATUS_LABEL[r.status] ?? r.status}
-                  </span>
-                </div>
-                <p className="text-sm text-black/60 mt-1">
-                  {sold} números vendidos · {formatCurrency(revenue)} recaudados
-                </p>
+                <span>
+                  {v.product.name} <span className="text-black/50">({v.label})</span>
+                </span>
+                <span className={v.stock === 0 ? "text-red-600 font-semibold" : "text-amber-700 font-semibold"}>
+                  {v.stock} uds.
+                </span>
               </Link>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string | number;
+  href?: string;
+}) {
+  const content = (
+    <div className="border border-black/10 rounded-lg p-3 bg-white h-full">
+      <div className="text-black/50 text-xs">{label}</div>
+      <div className="font-semibold text-lg">{value}</div>
+    </div>
+  );
+  return href ? (
+    <Link href={href} className="hover:border-brand-gold">
+      {content}
+    </Link>
+  ) : (
+    content
   );
 }
