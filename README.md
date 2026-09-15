@@ -103,11 +103,15 @@ entrar como administrador.
    paso manual. Puedes volver a desplegar sin problema: tanto las
    migraciones como el seed son seguros de repetir.
 5. (Opcional) El proyecto incluye `vercel.json` con una tarea programada
-   (Vercel Cron) que cada 15 minutos libera las reservas caducadas, para
-   que los números vuelvan a estar disponibles aunque nadie visite la
-   página. Si defines la variable `CRON_SECRET`, esa ruta solo aceptará
-   peticiones autenticadas con `Authorization: Bearer <CRON_SECRET>` (Vercel
-   la añade automáticamente en sus crons).
+   (Vercel Cron) que libera las reservas caducadas una vez al día, como
+   red de seguridad — en la práctica esto ya ocurre automáticamente cada
+   vez que alguien visita la página de una rifa, así que el cron solo
+   cubre el caso de que una rifa se quede sin visitas. El plan gratuito
+   (Hobby) de Vercel solo permite crons diarios; con un plan de pago
+   podrías bajar la frecuencia editando `schedule` en `vercel.json`. Si
+   defines la variable `CRON_SECRET`, esa ruta solo aceptará peticiones
+   autenticadas con `Authorization: Bearer <CRON_SECRET>` (Vercel la añade
+   automáticamente en sus crons).
 
 ## Estructura del proyecto
 
